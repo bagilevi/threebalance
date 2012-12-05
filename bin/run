@@ -1,0 +1,11 @@
+#!/usr/bin/env ruby
+
+if ARGV.size != 2
+  puts "Usage: #{File.basename(__FILE__)} <phone-number> <my3-password>"
+  exit 1
+end
+
+$: << File.expand_path('../../lib', __FILE__)
+require 'three_balance_scraper'
+
+puts ThreeBalanceScraper.new.run ARGV[0], ARGV[1]
