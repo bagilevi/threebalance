@@ -19,21 +19,30 @@ class ThreeBalanceScraper
     a = Mechanize.new { |agent| }
     a.agent.http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
+    debug "Getting first page"
     page = a.get "https://www.three.co.uk/My3Account/Login"
+    debug "Getting first page again"
     page = a.get "https://www.three.co.uk/My3Account/Login"
 
     sso_url = page.iframes.first.src
+    debug "SSO IFrame URL: #{sso_url}"
 
     login_widget = a.get sso_url
 
     login_form = login_widget.form_with(name: "login_form")
+    debug "Login form found: #{(login_form != nil).inspect}"
     login_form.username = phone_number
     login_form.password = password
+    debug "Submitting login form"
     login_result_page = login_form.click_button
 
-    account_page = a.get login_result_page.links.first.href
+    continuation_link = login_result_page.links.first.href
+    debug "Continuing to #{continuation_link}"
+    account_page = a.get continuation_link
+    debug "Going to balance page"
     balance_page = a.click account_page.link_with text: "Your account balance."
 
+    debug "Finding tables"
     table_nodes = balance_page.search("table.balance")
 
     internet_table, credit_table = nil, nil
@@ -46,8 +55,13 @@ class ThreeBalanceScraper
         credit_table = CreditBalanceTable.new(node)
       end
     }
+    [credit_table.pennies_remaining, internet_table.megabytes_remaining, internet_table.days_remaining].tap { |results|
+      debug "Returning results: #{results.inspect}"
+    }
+  end
 
-    [credit_table.pennies_remaining, internet_table.megabytes_remaining, internet_table.days_remaining]
+  def debug s
+    puts s
   end
 
   class BalanceTable < Struct.new(:table_node)
